@@ -1,4 +1,7 @@
-EIGEN_INCLUDE_DIR=/usr/include/eigen3/
+all: main.cpp KalmanFilter.h
+	g++ KalmanFilter.h main.cpp -o tester -lglut -lGL -lGLU
 
-all: main.cpp KalmanFilter.cpp
-	g++ main.cpp KalmanFilter.cpp -o tester
+clean:
+	rm -rf ./tester
+
+.PHONY: clean
