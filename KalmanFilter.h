@@ -45,11 +45,13 @@ public:
     }
     void SetMeasureMatrix(Matrix mat)
     { 
+        // need to check dimension
         this->H = mat; 
         this->Htransp = mat.transpose();
     }
     void SetMeasureNoise(Matrix mat)
     {
+        // need to check dimension
         this->H = mat; 
     }
     // predict and update
