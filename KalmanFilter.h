@@ -69,15 +69,23 @@ public:
     {
 #if DEBUG
         auto tmp1 = H * x;
-        std::cout << "H: " << H << std::endl;
-        std::cout << "x: " << x << std::endl;
-        std::cout << "H*x: " << tmp1(0) << ", " << tmp1(1) << std::endl;
+        // std::cout << "H: " << H << std::endl;
+        std::cout << "pre x: " << x.transpose() << std::endl;
+        std::cout << "H*x: " << tmp1.transpose() << std::endl;
 #endif
         Vector y = z - H * x;
+#if DEBUG
+        std::cout << "measure: " << z.transpose() << std::endl;
+        std::cout << "y: " << y.transpose() << std::endl;
+#endif
         Matrix S = H * P * Htransp + R;
         Matrix K = P * Htransp * S.inverse();
         x = x + K * y;
         P = (Matrix::Identity() - K * H) * P;
+#if DEBUG
+        std::cout << "after x: " << x.transpose() << std::endl;
+        std::cout << "-----------------------" << std::endl;
+#endif
     }
     Vector GetCurrentState() const { return x; }
 private:

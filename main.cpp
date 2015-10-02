@@ -1,3 +1,4 @@
+#include <random>
 #include <iostream>
 #include <GL/glut.h>
 #include "KalmanFilter.h"
@@ -22,6 +23,12 @@ struct Ball {
 
 Ball ball;
 Ball estimate;
+
+std::default_random_engine generator;
+std::normal_distribution<double> x_distribution(0.0,3.0);
+std::normal_distribution<double> y_distribution(0.0,1.0);
+std::normal_distribution<double> vx_distribution(0.0,2.0);
+std::normal_distribution<double> vy_distribution(0.0,1.0);
 
 /* executed when a regular key is pressed */
 void keyboardDown(unsigned char key, int x, int y) 
@@ -130,17 +137,17 @@ void initState()
     Vector4d state, motion_vector;
     Matrix4d trans, cov;
     state << estimate.x, estimate.y, estimate.vx, estimate.vy;
-    motion_vector << 1.0, 0.0, 0.0, 0.0;
+    motion_vector << 0.0, 0.0, 0.0, 0.0;
     trans << 
         1,  0,  t,  0,
         0,  1,  0,  t,
         0,  0,  1,  0,
         0,  0,  0,  1;
     cov <<
-        5,  0,  2,  0,
-        0,  5,  0,  2,
-        2,  0,  3,  0,
-        0,  2,  0,  3;
+        1,  0,  2,  0,
+        0,  1,  0,  2,
+        2,  0,  1,  0,
+        0,  2,  0,  1;
     Matrix4d measurement, noise;
     measurement << 
         1, 0, 0, 0,
@@ -168,7 +175,11 @@ void update(int usused)
     ball.y += ball.vy * 25.0 / 1000.0;
 
     Vector4d measurement;
-    measurement << ball.x, ball.y, ball.vx, ball.vy;
+    measurement << 
+        ball.x + x_distribution(generator), 
+        ball.y + y_distribution(generator), 
+        ball.vx + vx_distribution(generator), 
+        ball.vy + vy_distribution(generator);
 
     kf.Predict();
     kf.Update(measurement);
