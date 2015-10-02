@@ -85,8 +85,8 @@ void display()
 
     /* render the scene here */
     gluLookAt(
-            0.0, 4.0, 10.0,
-            0.0, 0.0, 0.0,
+            ball.x, 4.0, 10.0,
+            ball.x, 0.0, 0.0,
             0.0, 1.0, 0.0
     );
 
