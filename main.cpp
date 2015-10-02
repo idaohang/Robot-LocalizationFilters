@@ -2,6 +2,9 @@
 #include <GL/glut.h>
 #include "KalmanFilter.h"
 
+using Eigen::Matrix4d;
+using Eigen::Vector4d;
+
 /**
  * Use four dimensions to denote the state variable
  * 1. x
@@ -119,19 +122,44 @@ void initState()
     ball.x = 0; ball.vx = 5.0;
     ball.y = 0; ball.vy = 0.0;
 
-    estimate.r = 0.6;
-    estimate.x = 0; estimate.vx = 5.0;
+    estimate.r = 0.55;
+    estimate.x = 0; estimate.vx = 4.0;
     estimate.y = 0; estimate.vy = 0.0;
 
+    double t = 25.0 / 1000.0;
+    Vector4d state, motion_vector;
+    Matrix4d trans, cov;
+    state << estimate.x, estimate.y, estimate.vx, estimate.vy;
+    motion_vector << 1.0, 0.0, 0.0, 0.0;
+    trans << 
+        1,  0,  t,  0,
+        0,  1,  0,  t,
+        0,  0,  1,  0,
+        0,  0,  0,  1;
+    cov <<
+        5,  0,  2,  0,
+        0,  5,  0,  2,
+        2,  0,  3,  0,
+        0,  2,  0,  3;
+    Matrix4d measurement, noise;
+    measurement << 
+        1, 0, 0, 0,
+        0, 1, 0, 0,
+        0, 0, 1, 0,
+        0, 0, 0, 1;
+    noise <<
+        5,  0,  2,  0,
+        0,  5,  0,  2,
+        2,  0,  3,  0,
+        0,  2,  0,  3;
+
     // needed to be filled in
-    /*
-    kf.SetState();
-    kf.SetTransitionMatrix();
-    kf.SetUncertaintyCovariance();
-    kf.SetMotionVector();
-    kf.SetMeasureMatrix();
-    kf.SetMeasureNoise();
-    */
+    kf.SetState(state);
+    kf.SetTransitionMatrix(trans);
+    kf.SetUncertaintyCovariance(cov);
+    kf.SetMotionVector(motion_vector);
+    kf.SetMeasureMatrix(measurement);
+    kf.SetMeasureNoise(noise);
 }
 
 void update(int usused) 
@@ -139,10 +167,20 @@ void update(int usused)
     ball.x += ball.vx * 25.0 / 1000.0;
     ball.y += ball.vy * 25.0 / 1000.0;
 
+    Vector4d measurement;
+    measurement << ball.x, ball.y, ball.vx, ball.vy;
+
     kf.Predict();
-    // kf.Update();
-    
-    // std::cout << ball.x << ", " << ball.y << std::endl;
+    kf.Update(measurement);
+
+    Vector4d current = kf.GetCurrentState();
+    estimate.x = current(0);
+    estimate.y = current(1);
+    estimate.vx = current(2);
+    estimate.vy = current(3);
+#if DEBUG
+    std::cout << "ESTIMATE: " << estimate.x << ", " << estimate.y << std::endl;
+#endif
     glutTimerFunc(25, update, 0);
 }
  

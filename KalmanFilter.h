@@ -3,6 +3,7 @@
 
 #include <eigen3/Eigen/Core>
 #include <eigen3/Eigen/LU>
+#include <iostream>
 
 /*********************************************************************************************
  *  url: https://www.udacity.com/wiki/cs373/kalman-filter-matrices                           * 
@@ -52,7 +53,7 @@ public:
     void SetMeasureNoise(Matrix mat)
     {
         // need to check dimension
-        this->H = mat; 
+        this->R = mat; 
     }
     // predict and update
     void Predict()
@@ -60,9 +61,18 @@ public:
         // update the current state by state transition matrix
         x = F * x + u;
         P = F * P * Ftransp;
+#if DEBUG
+        std::cout << "PREDICT: " << x(0) << ", " << x(1) << std::endl;
+#endif
     }
     void Update(Vector z)
     {
+#if DEBUG
+        auto tmp1 = H * x;
+        std::cout << "H: " << H << std::endl;
+        std::cout << "x: " << x << std::endl;
+        std::cout << "H*x: " << tmp1(0) << ", " << tmp1(1) << std::endl;
+#endif
         Vector y = z - H * x;
         Matrix S = H * P * Htransp + R;
         Matrix K = P * Htransp * S.inverse();
