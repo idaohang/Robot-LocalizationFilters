@@ -10,92 +10,79 @@
  *  url: http://www.bzarg.com/p/how-a-kalman-filter-works-in-pictures/#mjx-eqn-matrixgain    *
  *********************************************************************************************/
 
-template<unsigned int dimension>
+using namespace Eigen;
+
+// N = dimension, M = number of measurements
+template<unsigned int N, unsigned int M>
 class KalmanFilter
 {
-    typedef Eigen::Matrix< double , dimension , 1> Vector;
-    typedef Eigen::Matrix< double , dimension , dimension> Matrix;
+    typedef Eigen::Matrix< double , N , 1> VectorN;
+    typedef Eigen::Matrix< double , M , 1> VectorM;
+    typedef Eigen::Matrix< double , N , N> MatrixNN;
+    typedef Eigen::Matrix< double , M , N> MatrixMN;
+    typedef Eigen::Matrix< double , N , M> MatrixNM;
+    typedef Eigen::Matrix< double , M , M> MatrixMM;
 public:
     // constructor and destructor
     KalmanFilter() {}
     virtual ~KalmanFilter() {}
 
     // parameters setup
-    void SetState(Vector vec) 
+    void SetState(VectorN vec) 
     {
-        assert(vec.size() == dimension && "dimension of state variable is not correct!");
+        assert(vec.size() == N && "N of state variable is not correct!");
         this->x = vec; 
     }
-    void SetMotionVector(Vector vec)
+    void SetMotionVector(VectorN vec)
     {
-        assert(vec.size() == dimension && "dimension of motion vector is not correct!");
+        assert(vec.size() == N && "N of motion vector is not correct!");
         this->u = vec; 
     }
-    void SetTransitionMatrix(Matrix mat)
+    void SetTransitionMatrix(MatrixNN mat)
     {
-        assert(mat.rows() == dimension && "number of rows in transition matrix is not correct!");
-        assert(mat.cols() == dimension && "number of cols in transition matrix is not correct!");
+        assert(mat.rows() == N && "number of rows in transition matrix mismatch!");
+        assert(mat.cols() == N && "number of cols in transition matrix mismatch!");
         this->F = mat; 
         this->Ftransp = mat.transpose();
     }
-    void SetUncertaintyCovariance(Matrix mat)
+    void SetUncertaintyCovariance(MatrixNN mat)
     {
-        assert(mat.rows() == dimension && "number of rows in covariance matrix is not correct!");
-        assert(mat.cols() == dimension && "number of cols in covariance matrix is not correct!");
+        assert(mat.rows() == N && "number of rows in covariance matrix mismatch!");
+        assert(mat.cols() == N && "number of cols in covariance matrix mismatch!");
         this->P = mat; 
     }
-    void SetMeasureMatrix(Matrix mat)
+    void SetMeasureMatrix(MatrixMN mat)
     { 
-        // need to check dimension
+        assert(mat.rows() == M && mat.cols() == N && "Measurement extraction matrix dimension mismatch!");
         this->H = mat; 
         this->Htransp = mat.transpose();
     }
-    void SetMeasureNoise(Matrix mat)
+    void SetMeasureNoise(MatrixMM mat)
     {
-        // need to check dimension
+        assert(mat.rows() == M && mat.cols() == M && "Measurement noise covariance dimension mismatch!");
         this->R = mat; 
     }
-    // predict and update
-    void Predict()
+    void Update(VectorM z)
     {
         // update the current state by state transition matrix
         x = F * x + u;
         P = F * P * Ftransp;
-#if DEBUG
-        std::cout << "PREDICT: " << x(0) << ", " << x(1) << std::endl;
-#endif
-    }
-    void Update(Vector z)
-    {
-#if DEBUG
-        auto tmp1 = H * x;
-        // std::cout << "H: " << H << std::endl;
-        std::cout << "pre x: " << x.transpose() << std::endl;
-        std::cout << "H*x: " << tmp1.transpose() << std::endl;
-#endif
-        Vector y = z - H * x;
-#if DEBUG
-        std::cout << "measure: " << z.transpose() << std::endl;
-        std::cout << "y: " << y.transpose() << std::endl;
-#endif
-        Matrix S = H * P * Htransp + R;
-        Matrix K = P * Htransp * S.inverse();
+        VectorM y = z - H * x;
+        MatrixMM S = H * P * Htransp + R;
+        MatrixNM K = P * Htransp * S.inverse();
         x = x + K * y;
-        P = (Matrix::Identity() - K * H) * P;
-#if DEBUG
-        std::cout << "after x: " << x.transpose() << std::endl;
-        std::cout << "-----------------------" << std::endl;
-#endif
+        P = (MatrixNN::Identity() - K * H) * P;
     }
-    Vector GetCurrentState() const { return x; }
+    VectorN GetCurrentState() const { return x; }
 private:
-    Vector x;     // state variable
-    Vector u;     // motion vector
+    VectorN x;     // state variable
+    VectorN u;     // motion vector
 
-    Matrix F, Ftransp;     // state transition function
-    Matrix P;              // state uncertainty covariance
-    Matrix H, Htransp;     // measurement matrix
-    Matrix R;              // measurement noise
+    MatrixNN F, Ftransp;     // state transition function
+    MatrixNN P;              // state uncertainty covariance
+    MatrixMN H;              // measurement extraction matrix
+    MatrixNM Htransp;        //measurement extraction matrix transpose
+    MatrixMM R;              // measurement noise
 };
 
 #endif /* end of include guard: KALMANFILTER_H */

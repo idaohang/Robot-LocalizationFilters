@@ -13,7 +13,8 @@ using Eigen::Vector4d;
  * 3. dx
  * 4. dy
  **/
-KalmanFilter<4> kf;
+// 4 dimension, 2 measurements (x, y)
+KalmanFilter<4, 2> kf;
 
 struct Ball {
     float r;
@@ -148,17 +149,14 @@ void initState()
         0,  1,  0,  2,
         2,  0,  1,  0,
         0,  2,  0,  1;
-    Matrix4d measurement, noise;
+    Matrix<double, 2, 4> measurement;
+    Matrix2d noise;
     measurement << 
         1, 0, 0, 0,
-        0, 1, 0, 0,
-        0, 0, 1, 0,
-        0, 0, 0, 1;
+        0, 1, 0, 0;
     noise <<
-        5,  0,  2,  0,
-        0,  5,  0,  2,
-        2,  0,  3,  0,
-        0,  2,  0,  3;
+        5,  0,
+        0,  5;
 
     // needed to be filled in
     kf.SetState(state);
@@ -174,14 +172,11 @@ void update(int usused)
     ball.x += ball.vx * 25.0 / 1000.0;
     ball.y += ball.vy * 25.0 / 1000.0;
 
-    Vector4d measurement;
+    Vector2d measurement;
     measurement << 
         ball.x + x_distribution(generator), 
-        ball.y + y_distribution(generator), 
-        ball.vx + vx_distribution(generator), 
-        ball.vy + vy_distribution(generator);
+        ball.y + y_distribution(generator);
 
-    kf.Predict();
     kf.Update(measurement);
 
     Vector4d current = kf.GetCurrentState();
