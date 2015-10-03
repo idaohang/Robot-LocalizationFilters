@@ -27,4 +27,5 @@
 *.out
 *.app
 
-tester
+ukf_demo
+kf_demo
