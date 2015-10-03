@@ -57,12 +57,12 @@ public:
         double factor2 = lambda / (2 * (dimension + lambda));
 
         /* set up the weights coefficients */
-        m_weights << factor1;
-        c_weights << factor1 + (1 - alpha * alpha + beta);
-        for (int i = 0; i < 2 * dimension + 1; ++i)
+        m_weights(0) = factor1;
+        c_weights(0) = factor1 + (1 - alpha * alpha + beta);
+        for (int i = 1; i < 2 * dimension + 1; ++i)
         {
-            m_weights << factor2;
-            c_weights << factor2;
+            m_weights(i) = factor2;
+            c_weights(i) = factor2;
         }
     }
     // predict and update
@@ -85,13 +85,13 @@ public:
         // set up the 1 to dimension
         for (int i = 1; i < dimension + 1; ++i) 
         {
-            Vector t = x + std::sqrt(dimension + lambda) * S.col(i);
+            Vector t = x + std::sqrt(dimension + lambda) * S.col(i - 1);
             sigma_points[i] = (*F)(t);
         }
         // set up the 1 to dimension
         for (int i = dimension + 1; i < 2 * dimension + 1; ++i) 
         {
-            Vector t = x - std::sqrt(dimension + lambda) * S.col(i - dimension);
+            Vector t = x - std::sqrt(dimension + lambda) * S.col(i - dimension - 1);
             sigma_points[i] = (*F)(t);
         }
 
