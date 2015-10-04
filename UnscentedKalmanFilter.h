@@ -4,13 +4,12 @@
 #include <eigen3/Eigen/Core>
 #include <eigen3/Eigen/LU>
 #include <eigen3/Eigen/Eigenvalues> 
-// #include <eigen3/unsupported/Eigen/MatrixFunctions>
+#include <eigen3/unsupported/Eigen/MatrixFunctions>
 #include <iostream>
 
-/*********************************************************************************************
- *  url: https://www.udacity.com/wiki/cs373/kalman-filter-matrices                           * 
- *  url: http://www.bzarg.com/p/how-a-kalman-filter-works-in-pictures/#mjx-eqn-matrixgain    *
- *********************************************************************************************/
+/******************************************************
+ *  url: http://www.cslu.ogi.edu/nsel/ukf/node6.html  * 
+ ******************************************************/
 
 using namespace Eigen;
 
@@ -105,22 +104,7 @@ public:
          ***********************/
 
         /* 1. compute square root covariance */
-        // auto Sqrt = P.sqrt();
-
-        Eigen::EigenSolver<MatrixNN> es(P);
-        auto V = es.pseudoEigenvectors();
-        auto D = es.pseudoEigenvalueMatrix();
-        std::cout << P << std::endl;
-        std::cout << "---------------------------" << std::endl;
-        std::cout << D << std::endl;
-        std::cout << "===========================" << std::endl;
-        // don't know better way to do element-wise sqrt
-        for (int i = 0; i < N; ++i) 
-        {
-            assert(D(i, i) > 0 && "diagonal matrix must be positive definite");
-            D(i, i) = std::sqrt(D(i, i));
-        }
-        auto Sqrt = V * D * V.inverse();
+        auto Sqrt = P.sqrt();
 
         /* 2. set up the transitioned vectors */
         VectorN sigma_points[2 * N + 1];
@@ -130,10 +114,10 @@ public:
             sigma_points[0] = (*F)(x);
             // set up the 1 to N
             for (int i = 1; i < N + 1; ++i)
-                sigma_points[i] = (*F)(x + std::sqrt(N + lambda) * Sqrt.col(i - 1));
+                sigma_points[i] = (*F)(x + std::sqrt(N + lambda) * Sqrt.row(i - 1).transpose());
             // set up the 1 to N
             for (int i = N + 1; i < 2 * N + 1; ++i) 
-                sigma_points[i] = (*F)(x - std::sqrt(N + lambda) * Sqrt.col(i - N - 1));
+                sigma_points[i] = (*F)(x - std::sqrt(N + lambda) * Sqrt.row(i - N - 1).transpose());
         }
 
         /* 3. compute mean and covariance */
@@ -152,6 +136,7 @@ public:
                 Pk += c_weights(i) * diff * diff.transpose();
             }
         }
+        Pk += MatrixNN::Identity() * 2;
 
         // --------------------------------------------------------
 
@@ -190,10 +175,24 @@ public:
             }
         }
 
+        // std::cout << P << std::endl;
+        // std::cout << "---------------------------" << std::endl;
+        // std::cout << Sqrt << std::endl;
+        // std::cout << "---------------------------" << std::endl;
+
         /* 6. compute new Gaussian distributions */
         MatrixNM K = Pxy * Pyy.inverse();
-        x = x + K * (z- xm);
+        x = xk + K * (z- xm);
         P = Pk - K * Pyy * K.transpose();
+
+        // std::cout << x.transpose() << std::endl;
+        // std::cout << "---------------------------" << std::endl;
+        std::cout << Pk << std::endl;
+        std::cout << "---------------------------" << std::endl;
+        std::cout << K * Pyy * K.transpose() << std::endl;
+        std::cout << "---------------------------" << std::endl;
+        std::cout << P << std::endl;
+        std::cout << "===========================" << std::endl;
     }
     /**
      * Get the current state variable

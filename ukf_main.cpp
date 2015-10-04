@@ -24,7 +24,7 @@ Vector4d UKF_Transition(Vector4d state)
 Vector2d UKF_MeasurementExtract(Vector4d state) 
 {
     Eigen::Vector2d v;
-    v << state(0) + 1.0, state(1);
+    v << state(0), state(1);
     return v;
 }
 
@@ -98,12 +98,12 @@ void display()
 
     /* render the scene here */
     gluLookAt(
-            0.0, 4.0, 10.0,
-            0.0, 0.0, 0.0,
+            ball.x, 4.0, 10.0,
+            ball.x, 0.0, 0.0,
             0.0, 1.0, 0.0
     );
 
-    grid(30, 0.5);
+    grid(60, 0.5);
 
     glPushMatrix();
         glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
@@ -166,11 +166,11 @@ void initState()
         1, 0, 0, 0,
         0, 1, 0, 0;
     noise <<
-        5,  0,
-        0,  5;
+        2,  0,
+        0,  2;
 
     // needed to be filled in
-    ukf.SetUnscentedParameters(1.0, 0.5);
+    ukf.SetUnscentedParameters(1.0, 0.2);
     ukf.SetState(state);
     ukf.SetStateTransition(UKF_Transition);
     ukf.SetStateCovariance(cov);

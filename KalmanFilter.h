@@ -7,7 +7,6 @@
 
 /*********************************************************************************************
  *  url: https://www.udacity.com/wiki/cs373/kalman-filter-matrices                           * 
- *  url: http://www.bzarg.com/p/how-a-kalman-filter-works-in-pictures/#mjx-eqn-matrixgain    *
  *********************************************************************************************/
 
 using namespace Eigen;
