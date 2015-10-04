@@ -13,11 +13,19 @@ using Eigen::Vector4d;
  * 3. dx
  * 4. dy
  **/
-UnscentedKalmanFilter<4> ukf;
+// 4 dimension, 2 measurements (x, y)
+UnscentedKalmanFilter<4, 2> ukf;
+
 Vector4d UKF_Transition(Vector4d state) 
 {
-    state(0) += 1.0;
+    state(0) += 1.0 * 25.0 / 1000.0;
     return state;
+}
+Vector2d UKF_MeasurementExtract(Vector4d state) 
+{
+    Eigen::Vector2d v;
+    v << state(0) + 1.0, state(1);
+    return v;
 }
 
 struct Ball {
@@ -90,8 +98,8 @@ void display()
 
     /* render the scene here */
     gluLookAt(
-            ball.x, 4.0, 10.0,
-            ball.x, 0.0, 0.0,
+            0.0, 4.0, 10.0,
+            0.0, 0.0, 0.0,
             0.0, 1.0, 0.0
     );
 
@@ -152,25 +160,22 @@ void initState()
         0,  1,  0,  0,
         0,  0,  1,  0,
         0,  0,  0,  1;
-    Matrix4d measurement, noise;
+    Matrix<double, 2, 4> measurement;
+    Matrix2d noise;
     measurement << 
         1, 0, 0, 0,
-        0, 1, 0, 0,
-        0, 0, 1, 0,
-        0, 0, 0, 1;
+        0, 1, 0, 0;
     noise <<
-        5,  0,  2,  0,
-        0,  5,  0,  2,
-        2,  0,  3,  0,
-        0,  2,  0,  3;
+        5,  0,
+        0,  5;
 
     // needed to be filled in
     ukf.SetUnscentedParameters(1.0, 0.5);
     ukf.SetState(state);
-    ukf.SetTransitionFunction(UKF_Transition);
-    ukf.SetUncertaintyCovariance(cov);
-    ukf.SetMeasureMatrix(measurement);
-    ukf.SetMeasureNoise(noise);
+    ukf.SetStateTransition(UKF_Transition);
+    ukf.SetStateCovariance(cov);
+    ukf.SetMeasureExtraction(UKF_MeasurementExtract);
+    ukf.SetMeasureCovariance(noise);
 }
 
 void update(int usused) 
@@ -178,14 +183,11 @@ void update(int usused)
     ball.x += ball.vx * 25.0 / 1000.0;
     ball.y += ball.vy * 25.0 / 1000.0;
 
-    Vector4d measurement;
+    Vector2d measurement;
     measurement << 
         ball.x + x_distribution(generator), 
-        ball.y + y_distribution(generator), 
-        ball.vx + vx_distribution(generator), 
-        ball.vy + vy_distribution(generator);
+        ball.y + y_distribution(generator);
 
-    ukf.Predict();
     ukf.Update(measurement);
 
     Vector4d current = ukf.GetCurrentState();
@@ -202,7 +204,6 @@ void update(int usused)
 /* initialize GLUT settings, register callbacks, enter main loop */
 int main(int argc, char** argv) 
 {
-
     glutInit(&argc, argv);
 
     glutInitDisplayMode(GLUT_DOUBLE | GLUT_RGB | GLUT_DEPTH);

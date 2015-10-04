@@ -1,11 +1,11 @@
-debug: kf_main.cpp KalmanFilter.h
-	g++ -std=c++11 KalmanFilter.h kf_main.cpp -o kf_demo -lglut -lGL -lGLU -D DEBUG=1
-
-silent: kf_main.cpp KalmanFilter.h
-	g++ -std=c++11 KalmanFilter.h kf_main.cpp -o kf_demo -lglut -lGL -lGLU -D DEBUG=0
+LD_LIBRARIES=-lglut -lGL -lGLU 
+INCLUDE_DIR=-I/usr/include/eigen3
 
 UKF: ukf_main.cpp UnscentedKalmanFilter.h
-	g++ -std=c++11 UnscentedKalmanFilter.h ukf_main.cpp -o ukf_demo -lglut -lGL -lGLU -D DEBUG=1
+	g++ -std=c++11 ukf_main.cpp -o ukf_demo $(LD_LIBRARIES) $(INCLUDE_DIR) -D DEBUG=1 
+
+KF: kf_main.cpp KalmanFilter.h
+	g++ -std=c++11 kf_main.cpp -o kf_demo $(LD_LIBRARIES) $(INCLUDE_DIR)
 
 clean:
 	rm -rf ./ukf_demo

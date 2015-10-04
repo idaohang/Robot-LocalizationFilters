@@ -34,7 +34,6 @@ public:
      * */
     void SetState(VectorN vec) 
     {
-        assert(vec.size() == N && "N of state variable is not correct!");
         this->x = vec; 
     }
     /**
@@ -42,7 +41,6 @@ public:
      * */
     void SetMoveVector(VectorN vec)
     {
-        assert(vec.size() == N && "N of motion vector is not correct!");
         this->u = vec; 
     }
     /**
@@ -51,8 +49,6 @@ public:
      * */
     void SetStateTransition(MatrixNN mat)
     {
-        assert(mat.rows() == N && "number of rows in transition matrix mismatch!");
-        assert(mat.cols() == N && "number of cols in transition matrix mismatch!");
         this->F = mat; 
         this->Ftransp = mat.transpose();
     }
@@ -61,8 +57,6 @@ public:
      * */
     void SetStateCovariance(MatrixNN mat)
     {
-        assert(mat.rows() == N && "number of rows in covariance matrix mismatch!");
-        assert(mat.cols() == N && "number of cols in covariance matrix mismatch!");
         this->P = mat; 
     }
     /**
@@ -71,7 +65,6 @@ public:
      * */
     void SetMeasureExtraction(MatrixMN mat)
     { 
-        assert(mat.rows() == M && mat.cols() == N && "Measurement extraction matrix dimension mismatch!");
         this->H = mat; 
         this->Htransp = mat.transpose();
     }
@@ -80,7 +73,6 @@ public:
      * */
     void SetMeasureCovariance(MatrixMM mat)
     {
-        assert(mat.rows() == M && mat.cols() == M && "Measurement noise covariance dimension mismatch!");
         this->R = mat; 
     }
     /**

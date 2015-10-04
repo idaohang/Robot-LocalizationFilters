@@ -4,129 +4,211 @@
 #include <eigen3/Eigen/Core>
 #include <eigen3/Eigen/LU>
 #include <eigen3/Eigen/Eigenvalues> 
+// #include <eigen3/unsupported/Eigen/MatrixFunctions>
 #include <iostream>
-#include <cmath>
 
-// http://www.cslu.ogi.edu/nsel/ukf/node6.html
+/*********************************************************************************************
+ *  url: https://www.udacity.com/wiki/cs373/kalman-filter-matrices                           * 
+ *  url: http://www.bzarg.com/p/how-a-kalman-filter-works-in-pictures/#mjx-eqn-matrixgain    *
+ *********************************************************************************************/
 
-template<unsigned int dimension>
+using namespace Eigen;
+
+// N = dimension, M = number of measurements
+template<unsigned int N, unsigned int M>
 class UnscentedKalmanFilter
 {
-    typedef Eigen::Matrix< double , dimension , 1> Vector;
-    typedef Eigen::Matrix< double , dimension , dimension> Matrix;
+    typedef Eigen::Matrix< double , N , 1> VectorN;
+    typedef Eigen::Matrix< double , M , 1> VectorM;
+    typedef Eigen::Matrix< double , N , N> MatrixNN;
+    typedef Eigen::Matrix< double , M , N> MatrixMN;
+    typedef Eigen::Matrix< double , N , M> MatrixNM;
+    typedef Eigen::Matrix< double , M , M> MatrixMM;
+
 public:
     // constructor and destructor
     UnscentedKalmanFilter() {}
     virtual ~UnscentedKalmanFilter() {}
 
-    // parameters setup
-    void SetState(Vector vec) 
+    /**
+     * State variable priori (N x 1)
+     * keep record of the best current belief state
+     * */
+    void SetState(VectorN vec) 
     {
-        assert(vec.size() == dimension && "dimension of state variable is not correct!");
         this->x = vec; 
     }
-    void SetTransitionFunction(Vector (*func)(Vector))
+    /**
+     * Transition function
+     * calculate the belief propagation to next state
+     * */
+    void SetStateTransition(VectorN (*func)(VectorN))
     {
         this->F = func;
     }
-    void SetUncertaintyCovariance(Matrix mat)
+    /**
+     * Covariance matrix of the state transition (N x N)
+     * */
+    void SetStateCovariance(MatrixNN mat)
     {
-        assert(mat.rows() == dimension && "number of rows in covariance matrix is not correct!");
-        assert(mat.cols() == dimension && "number of cols in covariance matrix is not correct!");
-        this->P = mat; 
+        this->P = mat;
     }
-    void SetMeasureMatrix(Matrix mat)
-    { 
-        // need to check dimension
-        this->H = mat; 
-        this->Htransp = mat.transpose();
-    }
-    void SetMeasureNoise(Matrix mat)
+    /**
+     * Measure extraction function
+     * used to extract state features from measurement input
+     * */
+    void SetMeasureExtraction(VectorM (*func)(VectorN))
     {
-        // need to check dimension
-        this->R = mat; 
+        this->H = func;
     }
+    /**
+     * Covariance matrix of the measurement, noise (M x M)
+     * */
+    void SetMeasureCovariance(MatrixMM mat)
+    {
+        this->R = mat;
+    }
+    /**
+     * Set up relevant parameters for Unscented Transform
+     * kappa > 0
+     * 0 < alpha < 1
+     * beta = 2 (optimal)
+     * */
     void SetUnscentedParameters(double kappa, double alpha, double beta = 2)
     {
         this->alpha = alpha;
         this->beta = beta;
         this->kappa = kappa;
-        this->lambda = alpha * alpha * (dimension + kappa) - dimension;
+        this->lambda = alpha * alpha * (N + kappa) - N;
 
-        double factor1 = lambda / (dimension + lambda);
-        double factor2 = lambda / (2 * (dimension + lambda));
+        double factor1 = lambda / (N + lambda);
+        double factor2 = 0.5 * (N + lambda);
 
         /* set up the weights coefficients */
         m_weights(0) = factor1;
         c_weights(0) = factor1 + (1 - alpha * alpha + beta);
-        for (int i = 1; i < 2 * dimension + 1; ++i)
+        for (int i = 1; i < 2 * N + 1; ++i)
         {
             m_weights(i) = factor2;
             c_weights(i) = factor2;
         }
     }
-    // predict and update
-    void Predict()
+    /**
+     * Calculate the update from model, and correct the output
+     * using the measurement inputs
+     * z: measurement (M x 1)
+     * */
+    void Update(VectorM z)
     {
+        /***********************
+         *  Update prediction  *
+         ***********************/
+
         /* 1. compute square root covariance */
-        Eigen::EigenSolver<Matrix> es(P);
+        // auto Sqrt = P.sqrt();
+
+        Eigen::EigenSolver<MatrixNN> es(P);
         auto V = es.pseudoEigenvectors();
         auto D = es.pseudoEigenvalueMatrix();
+        std::cout << P << std::endl;
+        std::cout << "---------------------------" << std::endl;
+        std::cout << D << std::endl;
+        std::cout << "===========================" << std::endl;
         // don't know better way to do element-wise sqrt
-        for (int i = 0; i < dimension; ++i)
+        for (int i = 0; i < N; ++i) 
+        {
+            assert(D(i, i) > 0 && "diagonal matrix must be positive definite");
             D(i, i) = std::sqrt(D(i, i));
-        auto S = V * D * V.inverse();
+        }
+        auto Sqrt = V * D * V.inverse();
 
         /* 2. set up the transitioned vectors */
-        // use 2 * dimension + 1 sigma points to find a Gaussian approximation
-        Vector sigma_points[2 * dimension + 1];
-        // set up the first: mean
-        sigma_points[0] = (*F)(x);
-        // set up the 1 to dimension
-        for (int i = 1; i < dimension + 1; ++i) 
+        VectorN sigma_points[2 * N + 1];
         {
-            Vector t = x + std::sqrt(dimension + lambda) * S.col(i - 1);
-            sigma_points[i] = (*F)(t);
-        }
-        // set up the 1 to dimension
-        for (int i = dimension + 1; i < 2 * dimension + 1; ++i) 
-        {
-            Vector t = x - std::sqrt(dimension + lambda) * S.col(i - dimension - 1);
-            sigma_points[i] = (*F)(t);
+            /* BLOCK FOR SIGMA POINTS CALCULATION */
+            // set up the first: mean
+            sigma_points[0] = (*F)(x);
+            // set up the 1 to N
+            for (int i = 1; i < N + 1; ++i)
+                sigma_points[i] = (*F)(x + std::sqrt(N + lambda) * Sqrt.col(i - 1));
+            // set up the 1 to N
+            for (int i = N + 1; i < 2 * N + 1; ++i) 
+                sigma_points[i] = (*F)(x - std::sqrt(N + lambda) * Sqrt.col(i - N - 1));
         }
 
         /* 3. compute mean and covariance */
-        x = Vector::Zero();
-        for (int i = 0; i < 2 * dimension + 1; ++i)
+        VectorN xk = VectorN::Zero();
         {
-            x += sigma_points[i] * m_weights(i);
+            /* BLOCK FOR SIGMA POINTS MEAN */
+            for (int i = 0; i < 2 * N + 1; ++i) 
+                xk += sigma_points[i] * m_weights(i);
         }
-        P = Matrix::Zero();
-        for (int i = 0; i < 2 * dimension + 1; ++i)
+        MatrixNN Pk = MatrixNN::Zero();
         {
-            Vector diff = sigma_points[i] - x;
-            P += c_weights(i) * diff * diff.transpose();
+            /* BLOCK FOR SIGMA POINTS COVARIANCE */
+            for (int i = 0; i < 2 * N + 1; ++i)
+            {
+                VectorN diff = sigma_points[i] - x;
+                Pk += c_weights(i) * diff * diff.transpose();
+            }
         }
+
+        // --------------------------------------------------------
+
+        /* 4. measurement extraction */
+        VectorM points[2 * N + 1];
+        {
+            /* BLOCK FOR SIGMA POINTS TRANSFORMATION */
+            for (int i = 0; i < 2 * N + 1; ++i)
+                points[i] = (*H)(sigma_points[i]);
+        }
+
+        /* 5. compute new mean and covariance */
+        VectorM xm = VectorM::Zero();
+        {
+            /* BLOCK FOR POINTS MEAN */
+            for (int i = 0; i < 2 * N + 1; ++i) 
+                xm += points[i] * m_weights(i);
+        }
+        MatrixMM Pyy = MatrixMM::Zero();
+        {
+            /* BLOCK FOR POINTS COVARIANCE */
+            for (int i = 0; i < 2 * N + 1; ++i)
+            {
+                VectorM diff = points[i] - xm;
+                Pyy += c_weights(i) * diff * diff.transpose();
+            }
+        }
+        MatrixNM Pxy = MatrixNM::Zero();
+        {
+            /* BLOCK FOR POINTS COVARIANCE */
+            for (int i = 0; i < 2 * N + 1; ++i)
+            {
+                VectorN x_diff = sigma_points[i] - xk;
+                VectorM y_diff = points[i] - xm;
+                Pxy += c_weights(i) * x_diff * y_diff.transpose();
+            }
+        }
+
+        /* 6. compute new Gaussian distributions */
+        MatrixNM K = Pxy * Pyy.inverse();
+        x = x + K * (z- xm);
+        P = Pk - K * Pyy * K.transpose();
     }
-    void Update(Vector z)
-    {
-        Vector y = z - H * x;
-        Matrix S = H * P * Htransp + R;
-        Matrix K = P * Htransp * S.inverse();
-        x = x + K * y;
-        P = (Matrix::Identity() - K * H) * P;
-    }
-    Vector GetCurrentState() const { return x; }
+    /**
+     * Get the current state variable
+     * */
+    VectorN GetCurrentState() const { return x; }
 private:
-    Vector x;     // state variable
     double alpha, beta, kappa, lambda;
+    VectorN x;     // state variable
 
-    Vector (*F)(Vector);   // state transition function
-    Matrix P;              // state uncertainty covariance
-    Matrix H, Htransp;     // measurement matrix
-    Matrix R;              // measurement noise
+    VectorN (*F)(VectorN);   // state transition function
+    VectorM (*H)(VectorN);   // measurement extracton function
+    MatrixNN P;              // state uncertainty covariance
+    MatrixMM R;              // measurement noise
 
-    Eigen::Matrix< double, 2 * dimension + 1, 1 > m_weights, c_weights;
+    Eigen::Matrix< double, 2 * N + 1, 1 > m_weights, c_weights;
 };
 
 #endif /* end of include guard: KALMANFILTER_H */
