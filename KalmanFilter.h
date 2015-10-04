@@ -28,51 +28,83 @@ public:
     virtual ~KalmanFilter() {}
 
     // parameters setup
+    /**
+     * State variable priori (N x 1)
+     * keep record of the best current belief state
+     * */
     void SetState(VectorN vec) 
     {
         assert(vec.size() == N && "N of state variable is not correct!");
         this->x = vec; 
     }
-    void SetMotionVector(VectorN vec)
+    /**
+     * Move vector
+     * */
+    void SetMoveVector(VectorN vec)
     {
         assert(vec.size() == N && "N of motion vector is not correct!");
         this->u = vec; 
     }
-    void SetTransitionMatrix(MatrixNN mat)
+    /**
+     * Transition function in matrix form (N x N)
+     * calculate the belief propagation to next state
+     * */
+    void SetStateTransition(MatrixNN mat)
     {
         assert(mat.rows() == N && "number of rows in transition matrix mismatch!");
         assert(mat.cols() == N && "number of cols in transition matrix mismatch!");
         this->F = mat; 
         this->Ftransp = mat.transpose();
     }
-    void SetUncertaintyCovariance(MatrixNN mat)
+    /**
+     * Covariance matrix of the state transition (N x N)
+     * */
+    void SetStateCovariance(MatrixNN mat)
     {
         assert(mat.rows() == N && "number of rows in covariance matrix mismatch!");
         assert(mat.cols() == N && "number of cols in covariance matrix mismatch!");
         this->P = mat; 
     }
-    void SetMeasureMatrix(MatrixMN mat)
+    /**
+     * Measure extraction matrix (M x N)
+     * used to extract state features from measurement input
+     * */
+    void SetMeasureExtraction(MatrixMN mat)
     { 
         assert(mat.rows() == M && mat.cols() == N && "Measurement extraction matrix dimension mismatch!");
         this->H = mat; 
         this->Htransp = mat.transpose();
     }
-    void SetMeasureNoise(MatrixMM mat)
+    /**
+     * Covariance matrix of the measurement, noise (M x M)
+     * */
+    void SetMeasureCovariance(MatrixMM mat)
     {
         assert(mat.rows() == M && mat.cols() == M && "Measurement noise covariance dimension mismatch!");
         this->R = mat; 
     }
+    /**
+     * Calculate the update from model, and correct the output
+     * using the measurement inputs
+     * z: measurement (M x 1)
+     * */
     void Update(VectorM z)
     {
         // update the current state by state transition matrix
         x = F * x + u;
         P = F * P * Ftransp;
+        // compute difference between measurement and prediction
         VectorM y = z - H * x;
         MatrixMM S = H * P * Htransp + R;
+        // calculate kalman gain
         MatrixNM K = P * Htransp * S.inverse();
+        // update state variable and covariance
         x = x + K * y;
         P = (MatrixNN::Identity() - K * H) * P;
     }
+    /**
+     * Get the current state variable
+     * */
     VectorN GetCurrentState() const { return x; }
 private:
     VectorN x;     // state variable

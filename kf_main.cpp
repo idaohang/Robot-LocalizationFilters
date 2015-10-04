@@ -160,11 +160,11 @@ void initState()
 
     // needed to be filled in
     kf.SetState(state);
-    kf.SetTransitionMatrix(trans);
-    kf.SetUncertaintyCovariance(cov);
-    kf.SetMotionVector(motion_vector);
-    kf.SetMeasureMatrix(measurement);
-    kf.SetMeasureNoise(noise);
+    kf.SetStateTransition(trans);
+    kf.SetStateCovariance(cov);
+    kf.SetMoveVector(motion_vector);
+    kf.SetMeasureExtraction(measurement);
+    kf.SetMeasureCovariance(noise);
 }
 
 void update(int usused) 
