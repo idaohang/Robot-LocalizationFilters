@@ -52,6 +52,10 @@ public:
     {
         this->P = mat;
     }
+    void SetProcessNoise(MatrixNN mat)
+    {
+        this->Q = mat;
+    }
     /**
      * Measure extraction function
      * used to extract state features from measurement input
@@ -81,7 +85,7 @@ public:
         this->lambda = alpha * alpha * (N + kappa) - N;
 
         double factor1 = lambda / (N + lambda);
-        double factor2 = 0.5 * (N + lambda);
+        double factor2 = 1 / (2 * (N + lambda));
 
         /* set up the weights coefficients */
         m_weights(0) = factor1;
@@ -127,7 +131,7 @@ public:
             for (int i = 0; i < 2 * N + 1; ++i) 
                 xk += sigma_points[i] * m_weights(i);
         }
-        MatrixNN Pk = MatrixNN::Zero();
+        MatrixNN Pk = Q;
         {
             /* BLOCK FOR SIGMA POINTS COVARIANCE */
             for (int i = 0; i < 2 * N + 1; ++i)
@@ -136,7 +140,6 @@ public:
                 Pk += c_weights(i) * diff * diff.transpose();
             }
         }
-        Pk += MatrixNN::Identity() * 2;
 
         // --------------------------------------------------------
 
@@ -155,7 +158,7 @@ public:
             for (int i = 0; i < 2 * N + 1; ++i) 
                 xm += points[i] * m_weights(i);
         }
-        MatrixMM Pyy = MatrixMM::Zero();
+        MatrixMM Pyy = R;
         {
             /* BLOCK FOR POINTS COVARIANCE */
             for (int i = 0; i < 2 * N + 1; ++i)
@@ -175,24 +178,10 @@ public:
             }
         }
 
-        // std::cout << P << std::endl;
-        // std::cout << "---------------------------" << std::endl;
-        // std::cout << Sqrt << std::endl;
-        // std::cout << "---------------------------" << std::endl;
-
         /* 6. compute new Gaussian distributions */
         MatrixNM K = Pxy * Pyy.inverse();
         x = xk + K * (z- xm);
         P = Pk - K * Pyy * K.transpose();
-
-        // std::cout << x.transpose() << std::endl;
-        // std::cout << "---------------------------" << std::endl;
-        std::cout << Pk << std::endl;
-        std::cout << "---------------------------" << std::endl;
-        std::cout << K * Pyy * K.transpose() << std::endl;
-        std::cout << "---------------------------" << std::endl;
-        std::cout << P << std::endl;
-        std::cout << "===========================" << std::endl;
     }
     /**
      * Get the current state variable
@@ -205,6 +194,7 @@ private:
     VectorN (*F)(VectorN);   // state transition function
     VectorM (*H)(VectorN);   // measurement extracton function
     MatrixNN P;              // state uncertainty covariance
+    MatrixNN Q;              // process noise
     MatrixMM R;              // measurement noise
 
     Eigen::Matrix< double, 2 * N + 1, 1 > m_weights, c_weights;

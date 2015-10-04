@@ -18,7 +18,8 @@ UnscentedKalmanFilter<4, 2> ukf;
 
 Vector4d UKF_Transition(Vector4d state) 
 {
-    state(0) += 1.0 * 25.0 / 1000.0;
+    state(0) += state(2) * 25.0 / 1000.0;
+    state(1) += state(3) * 25.0 / 1000.0;
     return state;
 }
 Vector2d UKF_MeasurementExtract(Vector4d state) 
@@ -146,31 +147,21 @@ void initState()
     estimate.x = 0; estimate.vx = 4.0;
     estimate.y = 0; estimate.vy = 0.0;
 
-    double t = 25.0 / 1000.0;
     Vector4d state, motion_vector;
-    Matrix4d trans, cov;
+    Matrix4d cov;
     state << estimate.x, estimate.y, estimate.vx, estimate.vy;
-    trans << 
-        1,  0,  t,  0,
-        0,  1,  0,  t,
-        0,  0,  1,  0,
-        0,  0,  0,  1;
     cov <<
         1,  0,  0,  0,
         0,  1,  0,  0,
         0,  0,  1,  0,
         0,  0,  0,  1;
-    Matrix<double, 2, 4> measurement;
     Matrix2d noise;
-    measurement << 
-        1, 0, 0, 0,
-        0, 1, 0, 0;
     noise <<
-        2,  0,
-        0,  2;
+        .2,  0,
+        0,  .2;
 
     // needed to be filled in
-    ukf.SetUnscentedParameters(1.0, 0.2);
+    ukf.SetUnscentedParameters(1.0, 0.4);
     ukf.SetState(state);
     ukf.SetStateTransition(UKF_Transition);
     ukf.SetStateCovariance(cov);
