@@ -15,13 +15,13 @@ using namespace Eigen;
 template<unsigned int N, unsigned int M>
 class KalmanFilter
 {
+public:
     typedef Eigen::Matrix< double , N , 1> VectorN;
     typedef Eigen::Matrix< double , M , 1> VectorM;
     typedef Eigen::Matrix< double , N , N> MatrixNN;
     typedef Eigen::Matrix< double , M , N> MatrixMN;
     typedef Eigen::Matrix< double , N , M> MatrixNM;
     typedef Eigen::Matrix< double , M , M> MatrixMM;
-public:
     // constructor and destructor
     KalmanFilter() {}
     virtual ~KalmanFilter() {}
@@ -88,7 +88,7 @@ public:
         VectorM y = z - H * x;
         MatrixMM S = H * P * Htransp + R;
         // calculate kalman gain
-        MatrixNM K = P * Htransp * S.inverse();
+        MatrixNM K = (P * Htransp) * S.inverse();
         // update state variable and covariance
         x = x + K * y;
         P = (MatrixNN::Identity() - K * H) * P;
@@ -97,6 +97,7 @@ public:
      * Get the current state variable
      * */
     VectorN GetCurrentState() const { return x; }
+    MatrixNN GetCurrentCov() const { return P; }
 private:
     VectorN x;     // state variable
     VectorN u;     // motion vector
