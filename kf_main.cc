@@ -3,8 +3,8 @@
 #include <GL/glut.h>
 #include "KalmanFilter.h"
 
-using Eigen::Matrix4d;
-using Eigen::Vector4d;
+typedef Eigen::Matrix<double, 6, 6> Matrix6d;
+typedef Eigen::Matrix<double, 6, 1> Vector6d;
 
 /**
  * Use four dimensions to denote the state variable
@@ -14,13 +14,17 @@ using Eigen::Vector4d;
  * 4. dy
  **/
 // 4 dimension, 2 measurements (x, y)
-KalmanFilter<4, 2> kf;
+KalmanFilter<6, 2> kf;
 
 struct Ball {
     float r;
     float x, y;
     float vx, vy;
+    float ax, ay;
 };
+
+int counter = 0;
+double t = 25.0 / 1000.0;
 
 Ball ball;
 Ball estimate;
@@ -91,7 +95,7 @@ void display()
             0.0, 1.0, 0.0
     );
 
-    grid(30, 0.5);
+    grid(200, 0.5);
 
     glPushMatrix();
         glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
@@ -127,36 +131,39 @@ void initGL(int width, int height) {
 void initState()
 {
     ball.r = 0.5;
-    ball.x = 0; ball.vx = 5.0;
-    ball.y = 0; ball.vy = 0.0;
+    ball.x = 0; 
+    ball.y = 0; 
 
-    estimate.r = 0.55;
-    estimate.x = 0; estimate.vx = 4.0;
-    estimate.y = 0; estimate.vy = 0.0;
+    estimate.r = 0.6;
+    estimate.x = 0;
+    estimate.y = 0;
 
-    double t = 25.0 / 1000.0;
-    Vector4d state, motion_vector;
-    Matrix4d trans, cov;
-    state << estimate.x, estimate.y, estimate.vx, estimate.vy;
-    motion_vector << 0.0, 0.0, 0.0, 0.0;
+    Vector6d state, motion_vector;
+    Matrix6d trans, cov;
+    state << estimate.x, estimate.y, estimate.vx, estimate.vy, estimate.ax, estimate.ay;
+    motion_vector << 0.0, 0.0, 0.0, 0.0, 0.0, 0.0;
     trans << 
-        1,  0,  t,  0,
-        0,  1,  0,  t,
-        0,  0,  1,  0,
-        0,  0,  0,  1;
+        1,  0,  t,  0,  0,  0,
+        0,  1,  0,  t,  0,  0,
+        0,  0,  1,  0,  t,  0,
+        0,  0,  0,  1,  0,  t,
+        0,  0,  0,  0,  1,  0,
+        0,  0,  0,  0,  0,  1;
     cov <<
-        1,  0,  2,  0,
-        0,  1,  0,  2,
-        2,  0,  1,  0,
-        0,  2,  0,  1;
-    Matrix<double, 2, 4> measurement;
-    Matrix2d noise;
+        1,  0,  0,  0,  0,  0,
+        0,  1,  0,  0,  0,  0,
+        0,  0,  1,  0,  0,  0,
+        0,  0,  0,  1,  1,  0,
+        0,  0,  0,  0,  1,  0,
+        0,  0,  0,  0,  0,  1;
+    Matrix<double, 2, 6> measurement;
+    Matrix<double, 2, 2> noise;
     measurement << 
-        1, 0, 0, 0,
-        0, 1, 0, 0;
+        1, 0, 0, 0, 0, 0,
+        0, 1, 0, 0, 0, 0;
     noise <<
-        5,  0,
-        0,  5;
+        25,  0,
+        0,  25;
 
     // needed to be filled in
     kf.SetState(state);
@@ -169,8 +176,27 @@ void initState()
 
 void update(int usused) 
 {
-    ball.x += ball.vx * 25.0 / 1000.0;
-    ball.y += ball.vy * 25.0 / 1000.0;
+    counter++;
+    if (counter < 50)
+    {
+        ball.vx = 0; ball.ax = 0;
+        ball.vy = 0; ball.ay = 0;
+    }
+    else if (counter == 50)
+    {
+        ball.vx = 10.0;     ball.ax = -2.0;
+        ball.vy = 0.0;      ball.ay = 0.0;
+    }
+    else {
+        if (ball.vx > 0) 
+        {
+            std::cout << "update" << std::endl;
+            ball.vx += ball.ax * t;
+            ball.vy += ball.ay * t;
+            ball.x += ball.vx * t;
+            ball.y += ball.vy * t;
+        }
+    }
 
     Vector2d measurement;
     measurement << 
@@ -178,12 +204,21 @@ void update(int usused)
         ball.y + y_distribution(generator);
 
     kf.Update(measurement);
-
-    Vector4d current = kf.GetCurrentState();
+    Vector6d current = kf.GetCurrentState();
     estimate.x = current(0);
     estimate.y = current(1);
     estimate.vx = current(2);
     estimate.vy = current(3);
+    estimate.ax = current(4);
+    estimate.ay = current(5);
+    std::cout << ball.vx << "\tvs.\t" << estimate.vx << std::endl;
+    
+    if (estimate.vx < 0) {
+        std::cout << "RESET------------------------------------------------" << std::endl;
+        current(2) = 0;
+        current(4) = 0;
+        kf.SetState(current);
+    }
 #if DEBUG
     std::cout << "ESTIMATE: " << estimate.x << ", " << estimate.y << std::endl;
 #endif
