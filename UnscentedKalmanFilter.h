@@ -1,10 +1,9 @@
-#ifndef KALMANFILTER_H
-#define KALMANFILTER_H
+#ifndef UNSCENTEDKALMANFILTER_H
+#define UNSCENTEDKALMANFILTER_H
 
-#include <eigen3/Eigen/Core>
-#include <eigen3/Eigen/LU>
-#include <eigen3/Eigen/Eigenvalues> 
-#include <eigen3/unsupported/Eigen/MatrixFunctions>
+#include <include/new_eigen3/Eigen/Core>
+#include <include/new_eigen3/Eigen/LU>
+#include <include/new_eigen3/unsupported/Eigen/MatrixFunctions>
 #include <iostream>
 
 /******************************************************
@@ -17,6 +16,7 @@ using namespace Eigen;
 template<unsigned int N, unsigned int M>
 class UnscentedKalmanFilter
 {
+public:
     typedef Eigen::Matrix< double , N , 1> VectorN;
     typedef Eigen::Matrix< double , M , 1> VectorM;
     typedef Eigen::Matrix< double , N , N> MatrixNN;
@@ -24,7 +24,6 @@ class UnscentedKalmanFilter
     typedef Eigen::Matrix< double , N , M> MatrixNM;
     typedef Eigen::Matrix< double , M , M> MatrixMM;
 
-public:
     // constructor and destructor
     UnscentedKalmanFilter() {}
     virtual ~UnscentedKalmanFilter() {}
@@ -108,7 +107,16 @@ public:
          ***********************/
 
         /* 1. compute square root covariance */
+#if 1
         auto Sqrt = P.sqrt();
+#else   // manual implementation for square root of matrix
+        Eigen::EigenSolver<Matrix> es(P);
+        auto V = es.pseudoEigenvectors();
+        auto D = es.pseudoEigenvalueMatrix();
+        for (int i = 0; i < dimension; ++i)
+            D(i, i) = std::sqrt(D(i, i));
+        auto Sqrt = V * D * V.inverse();
+#endif
 
         /* 2. set up the transitioned vectors */
         VectorN sigma_points[2 * N + 1];
@@ -187,6 +195,7 @@ public:
      * Get the current state variable
      * */
     VectorN GetCurrentState() const { return x; }
+    MatrixNN GetCurrentCov() const { return P; }
 private:
     double alpha, beta, kappa, lambda;
     VectorN x;     // state variable
@@ -200,4 +209,4 @@ private:
     Eigen::Matrix< double, 2 * N + 1, 1 > m_weights, c_weights;
 };
 
-#endif /* end of include guard: KALMANFILTER_H */
+#endif /* end of include guard: UNSCENTEDKALMANFILTER_H */
