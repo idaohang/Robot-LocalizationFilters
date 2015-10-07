@@ -25,7 +25,9 @@ public:
     typedef Eigen::Matrix< double , M , M> MatrixMM;
 
     // constructor and destructor
-    UnscentedKalmanFilter() {}
+    UnscentedKalmanFilter():
+       F(nullptr), H(nullptr)
+    {}
     virtual ~UnscentedKalmanFilter() {}
 
     /**
@@ -102,6 +104,8 @@ public:
      * */
     void Update(VectorM z)
     {
+	if (F == nullptr || H == nullptr)
+		return ; // Incomplete UKF
         /***********************
          *  Update prediction  *
          ***********************/
@@ -198,15 +202,16 @@ public:
     MatrixNN GetCurrentCov() const { return P; }
 private:
     double alpha, beta, kappa, lambda;
-    VectorN x;     // state variable
 
-    VectorN (*F)(VectorN);   // state transition function
-    VectorM (*H)(VectorN);   // measurement extracton function
     MatrixNN P;              // state uncertainty covariance
     MatrixNN Q;              // process noise
     MatrixMM R;              // measurement noise
 
     Eigen::Matrix< double, 2 * N + 1, 1 > m_weights, c_weights;
+
+    VectorN x;     // state variable
+    VectorN (*F)(VectorN);   // state transition function
+    VectorM (*H)(VectorN);   // measurement extracton function
 };
 
 #endif /* end of include guard: UNSCENTEDKALMANFILTER_H */
