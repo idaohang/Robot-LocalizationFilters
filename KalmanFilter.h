@@ -79,11 +79,13 @@ public:
      * using the measurement inputs
      * z: measurement (M x 1)
      * */
-    void Update(VectorM z)
+    void Predict()
     {
-        // update the current state by state transition matrix
         x = F * x + u;
         P = F * P * Ftransp;
+    }
+    void Correct(const VectorM& z)
+    {
         // compute difference between measurement and prediction
         VectorM y = z - H * x;
         MatrixMM S = H * P * Htransp + R;
@@ -92,6 +94,13 @@ public:
         // update state variable and covariance
         x = x + K * y;
         P = (MatrixNN::Identity() - K * H) * P;
+    }
+
+    void Update(const VectorM& z)
+    {
+        // update the current state by state transition matrix
+	Predict();
+	Correct(z);
     }
     /**
      * Get the current state variable
