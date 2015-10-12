@@ -5,6 +5,8 @@
 #include <random>
 #include <algorithm>
 
+namespace filter {
+
 template<size_t MParticle,
 	size_t NState,
 	size_t NObservation,
@@ -96,4 +98,5 @@ public:
 	}
 };
 
+}
 #endif

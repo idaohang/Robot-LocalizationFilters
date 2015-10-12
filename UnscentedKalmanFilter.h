@@ -12,6 +12,8 @@
 
 using namespace Eigen;
 
+namespace filter {
+
 // N = dimension, M = number of measurements
 template<unsigned int N, unsigned int M>
 class UnscentedKalmanFilter
@@ -213,5 +215,7 @@ private:
     VectorN (*F)(VectorN);   // state transition function
     VectorM (*H)(VectorN);   // measurement extracton function
 };
+
+}
 
 #endif /* end of include guard: UNSCENTEDKALMANFILTER_H */

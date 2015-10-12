@@ -11,6 +11,8 @@
 
 using namespace Eigen;
 
+namespace filter {
+
 // N = dimension, M = number of measurements
 template<unsigned int N, unsigned int M>
 class KalmanFilter
@@ -117,5 +119,7 @@ private:
     MatrixNM Htransp;        //measurement extraction matrix transpose
     MatrixMM R;              // measurement noise
 };
+
+}
 
 #endif /* end of include guard: KALMANFILTER_H */
