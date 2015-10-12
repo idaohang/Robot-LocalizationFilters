@@ -15,7 +15,7 @@ public:
 	typedef Eigen::Matrix<Element, 1 , NState> Particle;
 	//typedef Eigen::Matrix<Element, MParticle , NState> ParticleSet;
 	typedef std::vector<Particle> ParticleSet;
-	typedef Eigen::Matrix<Element, MParticle , NObservation> Ob;
+	typedef Eigen::Matrix<Element, 1, NObservation> Ob;
 	typedef Eigen::Matrix<Element, 1, NMotion> Motion;
 	typedef std::vector<double> Weight;
 	typedef Particle (*RandomParticleGenerator)();
@@ -31,7 +31,8 @@ private:
 
 public:
 	ParticleFilter()
-		:rd_(), gen_(rd_()),
+		:particles_(MParticle),
+		rd_(), gen_(rd_()),
 		w_(MParticle), accumw_(MParticle)
 	{
 	}
@@ -53,7 +54,7 @@ public:
 		 typename ObservationModelFunctor>
 	void filter(const Motion& u, const Ob& z, MotionModelFunctor mov, ObservationModelFunctor ob)
 	{
-		ParticleSet xbar;
+		ParticleSet xbar(MParticle);
 
 		xbar[0] = mov(u, particles_[0]);
 		w_[0] = ob(z, xbar[0]);

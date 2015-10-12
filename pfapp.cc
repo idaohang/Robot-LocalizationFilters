@@ -1,8 +1,17 @@
 #include "ParticleFilter.h"
 #include <cmath>
+#include <QtWidgets/QWidget>
+#include <QtGui/QKeyEvent>
+#include <QtGui/QPaintEvent>
+#include <QtGui/QPainter>
+#include <QtWidgets/QApplication>
+
+#define MPARTICLE 1000
+#define WALL		50.0
+#define MAXRANGE	100.0
 
 // 1D PF
-typedef ParticleFilter<1000, 1, 1, 1> PF;
+typedef ParticleFilter<MPARTICLE, 1, 1, 1> PF;
 typedef typename PF::Motion Motion;
 typedef typename PF::Particle Particle;
 typedef typename PF::Ob Ob;
@@ -32,13 +41,90 @@ public:
 	}
 };
 
+class SimWidget : public QWidget {
+	double loc_ = 0.0;
+	double wall_ = WALL;
+	std::random_device rd_;
+	std::mt19937 gen_;
+	std::normal_distribution<> dist_;
+	std::uniform_real_distribution<> udist_;
+	PF& pf_;
+public:
+	SimWidget(PF& pf)
+		:rd_(),
+		gen_(rd_()),
+		dist_(2.0, 0.7),
+		pf_(pf)
+	{
+	}
+protected:
+	void keyPressEvent(QKeyEvent* event)
+	{
+		bool next = false;
+		QWidget::keyPressEvent(event);
+		int key = event->key();
+		switch (key) {
+			case Qt::Key_A:
+			case Qt::Key_Left:
+				loc_ -= dist_(gen_);
+				next = true;
+				break;
+			case Qt::Key_D:
+			case Qt::Key_Right:
+				loc_ += dist_(gen_);
+			case Qt::Key_W:
+			case Qt::Key_S:
+			case Qt::Key_Up:
+			case Qt::Key_Down:
+				next = true;
+				break;
+		}
+		if (next) {
+			nextframe();
+			update();
+		}
+	}
+
+	void nextframe()
+	{
+	}
+
+	void paintEvent(QPaintEvent* event)
+	{
+		QWidget::paintEvent(event);
+		QPainter painter;
+		painter.begin(this);
+
+		std::vector<size_t> npix(width(), 0);
+		// Fill the background
+		auto background = QBrush(QColor(0, 0, 128));
+		painter.fillRect(0, 0, width(), height(), background);
+		for(const auto& particle : pf_.get_particles()) {
+			size_t x = width() * (particle(0,0) / MAXRANGE);
+			printf("%.3f   ", particle(0,0));
+			npix[x]++;
+		}
+		printf("\n");
+		painter.setPen(QColor(128,0,0));
+		for(size_t i = 0; i < npix.size(); i++) {
+			if (npix[i] > 0)
+				painter.drawLine(i, height()/2, i, height()/2+npix[i]);
+		}
+
+		painter.end();
+	}
+};
+
 int main(int argc, char* argv[])
 {
+	QApplication app(argc, argv);
 	PF pf;
 	Motion m;
-	m << 1.0;
+	m << -5.0;
 	Ob ob;
 	ob << 50.0;
 	pf.filter(m, ob, MM(), ObM());
-	return 0;
+	SimWidget widget(pf);
+	widget.show();
+	return app.exec();
 }
