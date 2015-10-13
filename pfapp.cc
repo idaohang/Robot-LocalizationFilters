@@ -10,6 +10,8 @@
 #define WALL		50.0
 #define MAXRANGE	100.0
 
+using namespace filter;
+
 // 1D PF
 typedef ParticleFilter<MPARTICLE, 1, 1, 1> PF;
 typedef typename PF::Motion Motion;

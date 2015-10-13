@@ -22,7 +22,7 @@ public:
 	typedef std::vector<double> Weight;
 	typedef Particle (*RandomParticleGenerator)();
 private:
-	ParticleSet particles_;
+	ParticleSet particles_, bar_particles_;
 	std::random_device rd_;
 	std::mt19937 gen_;
 	Weight w_, accumw_;
@@ -34,6 +34,7 @@ private:
 public:
 	ParticleFilter()
 		:particles_(MParticle),
+		bar_particles_(MParticle),
 		rd_(), gen_(rd_()),
 		w_(MParticle), accumw_(MParticle)
 	{
@@ -52,50 +53,87 @@ public:
 		enable_ejection_ = false;
 	}
 
+	void begin_frame()
+	{
+		w_.assign(MParticle, 1.0); // Reset to unit probablistic
+	}
+
+	// Feed motion data
+	template<typename MotionModelFunctor>
+	void feed_motion(const Motion& u, MotionModelFunctor mov)
+	{
+		for(size_t i = 0; i < MParticle; i++)
+			bar_particles_[i] = mov(u, particles_[i]);
+	}
+
+	// Feed sensor data
+	// This can be called multiple times for different landmarks
+	template<typename ObservationModelFunctor>
+	void feed_sensor(const Ob& z, ObservationModelFunctor ob)
+	{
+		for(size_t i = 0; i < MParticle; i++) {
+			w_[i] *= ob(z, bar_particles_[i]);
+		}
+	}
+
+	void end_frame()
+	{
+		resample();
+	}
+
 	template<typename MotionModelFunctor,
 		 typename ObservationModelFunctor>
 	void filter(const Motion& u, const Ob& z, MotionModelFunctor mov, ObservationModelFunctor ob)
 	{
-		ParticleSet xbar(MParticle);
-
-		xbar[0] = mov(u, particles_[0]);
-		w_[0] = ob(z, xbar[0]);
-		accumw_[0] = w_[0];
-
-		for(size_t i = 1; i < MParticle; i++) {
-			xbar[i] = mov(u, particles_[i]);
-			w_[i] = ob(z, xbar[i]);
-			accumw_[i] = accumw_[i-1] + w_[i];
-		}
-		double sumw = accumw_.back();
-		double w_ave = sumw / double(MParticle);
-		std::uniform_real_distribution<> dis(0.0, sumw);
-
-		double ejection_prob;
-		if (enable_ejection_) {
-			w_slow_ += alpha_slow_ * (w_ave - w_slow_);
-			w_fast_ += alpha_fast_ * (w_ave - w_fast_);
-			ejection_prob = std::max(0.0, 1.0 - w_fast_/w_slow_);
-		}
-
-		for(size_t i = 0; i < MParticle; i++) {
-			if (enable_ejection_ && dis(gen_) < ejection_prob) {
-				particles_[i] = (*rpg_)();
-				continue;
-			}
-			double sample = dis(gen_);
-			auto iter = std::lower_bound(accumw_.begin(),
-					accumw_.end(),
-					sample);
-			size_t idx = iter - accumw_.begin();
-			particles_[i] = xbar[idx]; // Add \bar{X}_{idx} to X
-		}
+		begin_frame();
+		feed_motion(u, mov);
+		feed_sensor(z, ob);
+		end_frame();
 	}
 
 	const ParticleSet& get_particles()
 	{
 		return particles_;
 	}
+
+private:
+	void resample()
+	{
+		accumw_[0] = w_[0];
+		for(size_t i = 1; i < MParticle; i++)
+			accumw_[i] = accumw_[i-1] + w_[0];
+		double sumw = accumw_.back();
+		double w_ave = sumw / double(MParticle);
+		double cell_size = sumw/MParticle;
+		std::uniform_real_distribution<> dis(0.0, cell_size);
+
+		auto iter = accumw_.begin();
+		double sample = dis(gen_);
+		for(size_t i = 0; i < MParticle; i++) {
+			while (*iter < sample && iter + 1 != accumw_.end())
+				++iter;
+			size_t idx = iter - accumw_.begin();
+			particles_[i] = bar_particles_[idx]; // Add \bar{X}_{idx} to X
+			sample += cell_size;
+		}
+
+		if (enable_ejection_) {
+			w_slow_ += alpha_slow_ * (w_ave - w_slow_);
+			w_fast_ += alpha_fast_ * (w_ave - w_fast_);
+			double ejection_prob = std::max(0.0, 1.0 - w_fast_/w_slow_);
+			eject_random_particles(ejection_prob);
+		}
+	}
+
+	void eject_random_particles(double ejection_prob)
+	{
+		std::uniform_real_distribution<> dis(0.0, 1.0);
+		for(size_t i = 0; i < MParticle; i++) {
+			if (dis(gen_) < ejection_prob)
+				particles_[i] = (*rpg_)();
+		}
+	}
+
 };
 
 }
