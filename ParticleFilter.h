@@ -23,7 +23,7 @@ public:
 	typedef Particle (*RandomParticleGenerator)();
 private:
 	ParticleSet particles_, bar_particles_;
-	std::random_device rd_;
+	//std::random_device rd_;
 	std::mt19937 gen_;
 	Weight w_, accumw_;
 	double alpha_slow_, alpha_fast_;
@@ -35,7 +35,9 @@ public:
 	ParticleFilter()
 		:particles_(MParticle),
 		bar_particles_(MParticle),
-		rd_(), gen_(rd_()),
+		//rd_(),
+		//gen_(rd_()),
+		gen_(88),
 		w_(MParticle), accumw_(MParticle)
 	{
 	}
@@ -66,6 +68,11 @@ public:
             bar_particles_[i] = mov(u, particles_[i]);
     }
 
+	void feed_stall_motion()
+	{
+		bar_particles_ = particles_;
+	}
+
 	// Feed sensor data
 	// This can be called multiple times for different landmarks
 	template<typename ObservationModelFunctor>
@@ -73,6 +80,7 @@ public:
 	{
 		for(size_t i = 0; i < MParticle; i++) {
 			w_[i] *= ob(z, bar_particles_[i]);
+			//printf("OB: %f\n", w_[i]);
 		}
 	}
 
@@ -100,12 +108,14 @@ private:
 	void resample()
 	{
 		accumw_[0] = w_[0];
-		for(size_t i = 1; i < MParticle; i++)
+		for(size_t i = 1; i < MParticle; i++) {
 			accumw_[i] = accumw_[i-1] + w_[i];
+		}
 		double sumw = accumw_.back();
 		double w_ave = sumw / double(MParticle);
 		double cell_size = sumw/MParticle;
 		std::uniform_real_distribution<> dis(0.0, cell_size);
+		//printf("Resample: sumw %f\n", sumw);
 
 		auto iter = accumw_.begin();
 		double sample = dis(gen_);

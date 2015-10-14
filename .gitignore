@@ -30,3 +30,6 @@
 ukf_demo
 kf_demo
 pfapp
+
+# vim swap file
+*.swp

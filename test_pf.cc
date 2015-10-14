@@ -6,7 +6,7 @@
 #include <QtGui/QPainter>
 #include <QtWidgets/QApplication>
 
-#define MPARTICLE 1000
+#define MPARTICLE 4000
 #define WALL		50.0
 #define MAXRANGE	100.0
 
@@ -18,44 +18,58 @@ typedef typename PF::Motion Motion;
 typedef typename PF::Particle Particle;
 typedef typename PF::Ob Ob;
 
+//std::random_device g_rd;
+//std::mt19937 g_gen(g_rd());
+std::mt19937 g_gen(77);
+
 class MM {
+	std::normal_distribution<> dist_;
 public:
+	MM()
+		:dist_(0.0, 1.0)
+	{
+	}
 	// Given robot's motion u and particle in the previous previous frame
 	// Return the anticipated location of this particle in current frame
 	Particle operator()(const Motion& u, const Particle& x)
 	{
-		return x - u;
+		Particle rmove;
+	        rmove << dist_(g_gen);
+		return x + u + rmove;
 	}
 };
 
 class ObM {
-	static constexpr double theta = 5.0;
+	static constexpr double theta = 10.0;
 	static constexpr double theta2 = theta*theta;
+	double frac_ = 1/(theta*sqrt(2*M_PI));
+	double true_loc = WALL;
 public:
 	// Given robot's observation z, and (assumed) ground truth x
 	// Return p(z|x)
 	double operator()(const Ob& z, const Particle& x)
 	{
-		double err = z(0,0) - x(0,0);
+		double truth = true_loc - x(0,0);
+		double err = truth - z(0,0);
 		double e = -(err*err)/(2*theta2);
-		double frac = 1/(theta*std::sqrt(2*M_PI));
-		return frac * std::exp(e);
+		printf("\terr: %f\te: %f\t\t\t", err, e);
+		return frac_ * exp(e);
 	}
 };
 
 class SimWidget : public QWidget {
 	double loc_ = 0.0;
+	double motion_ = 0.0;
+	double motion_factor_ = 2.0;
 	double wall_ = WALL;
-	std::random_device rd_;
-	std::mt19937 gen_;
 	std::normal_distribution<> dist_;
 	std::uniform_real_distribution<> udist_;
 	PF& pf_;
+	MM mm_;
+	ObM obm_;
 public:
 	SimWidget(PF& pf)
-		:rd_(),
-		gen_(rd_()),
-		dist_(2.0, 0.7),
+		:dist_(0, 0.7),
 		pf_(pf)
 	{
 	}
@@ -63,17 +77,19 @@ protected:
 	void keyPressEvent(QKeyEvent* event)
 	{
 		bool next = false;
+		motion_ = 0.0;
+
 		QWidget::keyPressEvent(event);
 		int key = event->key();
 		switch (key) {
 			case Qt::Key_A:
 			case Qt::Key_Left:
-				loc_ -= dist_(gen_);
+				motion_ = -1.0;
 				next = true;
 				break;
 			case Qt::Key_D:
 			case Qt::Key_Right:
-				loc_ += dist_(gen_);
+				motion_ = 1.0;
 			case Qt::Key_W:
 			case Qt::Key_S:
 			case Qt::Key_Up:
@@ -81,6 +97,8 @@ protected:
 				next = true;
 				break;
 		}
+		if (motion_ != 0.0)
+			loc_ += motion_ * motion_factor_ + dist_(g_gen);
 		if (next) {
 			nextframe();
 			update();
@@ -89,11 +107,24 @@ protected:
 
 	void nextframe()
 	{
+		std::normal_distribution<> obdist(wall_ - loc_, 5.0);
+		Ob ob;
+		ob << obdist(g_gen);
+		if (motion_ != 0.0) {
+			Motion m;
+			m << motion_ * motion_factor_;
+			pf_.filter(m, ob, mm_, obm_);
+		} else {
+			pf_.begin_frame();
+			pf_.feed_stall_motion();
+			pf_.feed_sensor(ob, obm_);
+			pf_.end_frame();
+		}
 	}
 
 	void paintEvent(QPaintEvent* event)
 	{
-		QWidget::paintEvent(event);
+		//QWidget::paintEvent(event);
 		QPainter painter;
 		painter.begin(this);
 
@@ -104,16 +135,22 @@ protected:
 		for(const auto& particle : pf_.get_particles()) {
 			size_t x = width() * (particle(0,0) / MAXRANGE);
 			printf("%.3f   ", particle(0,0));
-			npix[x]++;
+			if (x >= 0 && x < npix.size())
+				npix[x]++;
 		}
-		printf("\n");
+		//printf("\n");
 		painter.setPen(QColor(128,0,0));
 		for(size_t i = 0; i < npix.size(); i++) {
 			if (npix[i] > 0)
 				painter.drawLine(i, height()/2, i, height()/2+npix[i]);
 		}
-
-		painter.end();
+		printf("\nLoc %f\n", loc_);
+		int iloc = loc_/MAXRANGE * width();
+		painter.setPen(QColor(255,255,255));
+		painter.drawLine(iloc, height()/2, iloc, height()/4);
+		int iwall = wall_/MAXRANGE * width();
+		painter.setPen(QColor(0,0,0));
+		painter.drawLine(iwall, height()/2, iwall, 0);
 	}
 };
 
