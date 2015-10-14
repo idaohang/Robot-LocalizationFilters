@@ -63,8 +63,8 @@ public:
 	void feed_motion(const Motion& u, MotionModelFunctor mov)
 	{
 		for(size_t i = 0; i < MParticle; i++)
-			bar_particles_[i] = mov(u, particles_[i]);
-	}
+            bar_particles_[i] = mov(u, particles_[i]);
+    }
 
 	// Feed sensor data
 	// This can be called multiple times for different landmarks
@@ -91,7 +91,7 @@ public:
 		end_frame();
 	}
 
-	const ParticleSet& get_particles()
+	ParticleSet& get_particles()
 	{
 		return particles_;
 	}
@@ -101,7 +101,7 @@ private:
 	{
 		accumw_[0] = w_[0];
 		for(size_t i = 1; i < MParticle; i++)
-			accumw_[i] = accumw_[i-1] + w_[0];
+			accumw_[i] = accumw_[i-1] + w_[i];
 		double sumw = accumw_.back();
 		double w_ave = sumw / double(MParticle);
 		double cell_size = sumw/MParticle;
