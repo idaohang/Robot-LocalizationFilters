@@ -104,6 +104,11 @@ public:
 		return particles_;
 	}
 
+	const ParticleSet& get_particles() const
+	{
+		return particles_;
+	}
+
 private:
 	void resample()
 	{
