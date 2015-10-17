@@ -1,4 +1,6 @@
 #include "ParticleFilter.h"
+#include "PFHelper.h"
+#include "MeanShift.h"
 #include <cmath>
 #if QT_VERSION >= 0x050000
 #include <QtWidgets/QWidget>
@@ -13,7 +15,7 @@
 
 #define VERBOSE 0
 
-#define MPARTICLE 4000
+#define MPARTICLE 	200
 #define WALL		50.0
 #define MAXRANGE	100.0
 
@@ -184,7 +186,8 @@ int main(int argc, char* argv[])
 	Ob ob;
 	ob << 50.0;
 	pf.filter(m, ob, MM(), ObM());
-	pf.set_ejection(0.005, 0.95, &rpg);
+	pf.set_ejection(0.005, 0.99, &rpg);
+	MeanShift<Particle, ClimbFunctor2D<Particle, MeanShift::MeanWindow>> ms(3, &rpg, CompareParticle2D<Particle>(), 100.0);
 	SimWidget widget(pf);
 	widget.show();
 	return app.exec();

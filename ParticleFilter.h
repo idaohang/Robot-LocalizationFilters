@@ -21,6 +21,7 @@ public:
 	typedef Eigen::Matrix<Element, 1, NMotion> Motion;
 	typedef std::vector<double> Weight;
 	typedef Particle (*RandomParticleGenerator)();
+
 private:
 	ParticleSet particles_, bar_particles_;
 	//std::random_device rd_;
@@ -142,6 +143,7 @@ private:
 
 	void eject_random_particles(double ejection_prob)
 	{
+		printf("Ejection prob %f\n", ejection_prob);
 		std::uniform_real_distribution<> dis(0.0, 1.0);
 		for(size_t i = 0; i < MParticle; i++) {
 			if (dis(gen_) < ejection_prob)
