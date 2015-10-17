@@ -65,8 +65,8 @@ public:
 	void feed_motion(const Motion& u, MotionModelFunctor mov)
 	{
 		for(size_t i = 0; i < MParticle; i++)
-            bar_particles_[i] = mov(u, particles_[i]);
-    }
+			bar_particles_[i] = mov(u, particles_[i]);
+	}
 
 	void feed_stall_motion()
 	{

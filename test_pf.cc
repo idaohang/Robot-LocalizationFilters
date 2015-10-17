@@ -1,10 +1,17 @@
 #include "ParticleFilter.h"
 #include <cmath>
+#if QT_VERSION >= 0x050000
 #include <QtWidgets/QWidget>
+#include <QtWidgets/QApplication>
+#else
+#include <QtGui/QWidget>
+#include <QtGui/QApplication>
+#endif
 #include <QtGui/QKeyEvent>
 #include <QtGui/QPaintEvent>
 #include <QtGui/QPainter>
-#include <QtWidgets/QApplication>
+
+#define VERBOSE 0
 
 #define MPARTICLE 4000
 #define WALL		50.0
@@ -52,7 +59,9 @@ public:
 		double truth = true_loc - x(0,0);
 		double err = truth - z(0,0);
 		double e = -(err*err)/(2*theta2);
+#if VERBOSE
 		printf("\terr: %f\te: %f\t\t\t", err, e);
+#endif
 		return frac_ * exp(e);
 	}
 };
@@ -134,7 +143,9 @@ protected:
 		painter.fillRect(0, 0, width(), height(), background);
 		for(const auto& particle : pf_.get_particles()) {
 			size_t x = width() * (particle(0,0) / MAXRANGE);
+#if VERBOSE
 			printf("%.3f   ", particle(0,0));
+#endif
 			if (x >= 0 && x < npix.size())
 				npix[x]++;
 		}
@@ -144,7 +155,9 @@ protected:
 			if (npix[i] > 0)
 				painter.drawLine(i, height()/2, i, height()/2+npix[i]);
 		}
+#if VERBOSE
 		printf("\nLoc %f\n", loc_);
+#endif
 		int iloc = loc_/MAXRANGE * width();
 		painter.setPen(QColor(255,255,255));
 		painter.drawLine(iloc, height()/2, iloc, height()/4);
@@ -153,6 +166,14 @@ protected:
 		painter.drawLine(iwall, height()/2, iwall, 0);
 	}
 };
+
+Particle rpg()
+{
+	static std::uniform_real_distribution<> dis(0.0, MAXRANGE);
+	Particle ret;
+	ret << dis(g_gen);
+	return ret;
+}
 
 int main(int argc, char* argv[])
 {
@@ -163,6 +184,7 @@ int main(int argc, char* argv[])
 	Ob ob;
 	ob << 50.0;
 	pf.filter(m, ob, MM(), ObM());
+	pf.set_ejection(0.005, 0.95, &rpg);
 	SimWidget widget(pf);
 	widget.show();
 	return app.exec();
