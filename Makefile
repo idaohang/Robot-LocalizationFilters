@@ -8,5 +8,5 @@ else
 LIB=-lQt5Core -lQt5Gui -lQt5Widgets
 endif
 
-pfapp: test_pf.cc ParticleFilter.h
+pfapp: test_pf.cc ParticleFilter.h MeanWindow.h MeanShift.h PFHelper.h
 	g++ -g -std=c++11 -fPIC $(INCLUDE) -o pfapp test_pf.cc $(LIB)

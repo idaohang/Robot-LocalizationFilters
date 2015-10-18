@@ -3,8 +3,10 @@
 
 #include <functional>
 #include <eigen3/Eigen/Core>
+#include "MeanWindow.h"
 
 namespace filter {
+
 template<typename Particle,
 	typename ClimbFunctor>
 class MeanShift {
@@ -12,20 +14,15 @@ public:
 	typedef std::vector<Particle> ParticleSet;
 	typedef std::function<bool (const Particle&, const Particle&)> PCmpFunctor;
 	typedef Particle (*RandomParticleGenerator)();
+	typedef MeanWindow<Particle> MW;
 
-	struct MeanWindow {
-		Particle center;
-		size_t nparticles;
-		double radius;
-	};
 private:
 	RandomParticleGenerator meanrpg_ = nullptr;
-	ParticleSet means_;
-	std::vector<MeanWindow> mw_;
+	std::vector<MW> mw_;
 	int nmeans_ = 0;
 	double init_radius_;
 	PCmpFunctor pcmpf_;
-	std::reference_wrapper<ParticleSet> ps_;
+	ParticleSet *ps_ = nullptr;
 
 	MeanShift() = delete;
 
@@ -47,34 +44,52 @@ public:
 		init_radius_ = rad;
 	}
 
-	void filter_particles(ParticleSet& ps)
+	/* Call for debugging purpose only */
+	void init_means(ParticleSet* ps, bool reset)
 	{
-		ps_ = std::ref(ps);
-		meanshift();
+		ps_ = ps;
+		if (reset || mw_.empty()) {
+			mw_.clear();
+			for (int i = 0; i < nmeans_; i++)
+				mw_.emplace_back(MW({(*meanrpg_)(), 0, init_radius_}));
+		} else {
+			for (auto& mw : mw_)
+				mw.radius = init_radius_;
+		}
+		std::sort(ps_->begin(), ps_->end(), pcmpf_);
+	}
+
+	void meanshift(ParticleSet* ps, bool reset = true)
+	{
+		init_means(ps, reset);
+
+		for (auto& mw : mw_)
+			mw_.emplace_back(climb(mw));
+	}
+
+	void meanshift_one()
+	{
+		ClimbFunctor cf(*ps_);
+		for (auto& mw : mw_) {
+			cf(mw);
+		}
+	}
+
+	const std::vector<MW>& get_current_window() const
+	{
+		return mw_;
+	}
+
+	std::vector<MW>& get_current_window()
+	{
+		return mw_;
 	}
 
 private:
-	void init_means()
-	{
-		for (int i = 0; i < nmeans_; i++)
-			means_.emplace_back((*meanrpg_)());
-		mw_.clear();
-	}
 
-	void meanshift()
+	MW climb(const MW& mw)
 	{
-		init_means();
-		std::sort(ps_.begin(), ps_.end(), pcmpf_);
-		for (auto& meanv : means_)
-			mw_.emplace_back(climb(meanv));
-	}
-
-	MeanWindow climb(const Particle& meanv)
-	{
-		MeanWindow mw;
-		ClimbFunctor cf(ps_);
-		mw.center = meanv;
-		mw.radius = init_radius_;
+		ClimbFunctor cf(*ps_);
 		bool changed;
 		while (changed = cf(mw))
 			;

@@ -68,6 +68,15 @@ public:
 	}
 };
 
+Particle rpg()
+{
+	static std::uniform_real_distribution<> dis(0.0, MAXRANGE);
+	Particle ret;
+	ret << dis(g_gen);
+	return ret;
+}
+
+
 class SimWidget : public QWidget {
 	double loc_ = 0.0;
 	double motion_ = 0.0;
@@ -76,18 +85,23 @@ class SimWidget : public QWidget {
 	std::normal_distribution<> dist_;
 	std::uniform_real_distribution<> udist_;
 	PF& pf_;
+	bool newmean_ = true;
+	MeanShift<Particle, ClimbFunctor1D<Particle>> ms_;
+	std::vector<MeanWindow<Particle>> mw_;
 	MM mm_;
 	ObM obm_;
 public:
 	SimWidget(PF& pf)
 		:dist_(0, 0.7),
-		pf_(pf)
+		pf_(pf),
+		ms_(10, &rpg, CompareParticle1D<Particle>(), 20.0)
 	{
 	}
 protected:
 	void keyPressEvent(QKeyEvent* event)
 	{
 		bool next = false;
+		bool ms = false;
 		motion_ = 0.0;
 
 		QWidget::keyPressEvent(event);
@@ -107,12 +121,37 @@ protected:
 			case Qt::Key_Down:
 				next = true;
 				break;
+			case Qt::Key_M:
+				ms = true;
+				break;
 		}
 		if (motion_ != 0.0)
 			loc_ += motion_ * motion_factor_ + dist_(g_gen);
 		if (next) {
+			newmean_ = true;
 			nextframe();
 			update();
+		}
+		if (ms) {
+			calc_ms();
+			update();
+		}
+	}
+
+	void calc_ms()
+	{
+		if (newmean_) {
+			ms_.init_means(&(pf_.get_particles()), true);
+			newmean_ = false;
+		}
+		ms_.meanshift_one();
+		mw_ = ms_.get_current_window();
+		printf("Current MW\n");
+		for (const auto& mw: mw_) {
+			printf("\tcenter %f, points %lu, radius: %f\n",
+					mw.center(0),
+					mw.nparticles,
+					mw.radius);
 		}
 	}
 
@@ -166,16 +205,24 @@ protected:
 		int iwall = wall_/MAXRANGE * width();
 		painter.setPen(QColor(0,0,0));
 		painter.drawLine(iwall, height()/2, iwall, 0);
+		
+		if (!mw_.empty()) {
+			painter.setPen(QColor(255,255,255));
+			int mw_counter = 1;
+			for (const auto& mw : mw_) {
+				int center = mw.center(0)/MAXRANGE * width();
+				int w = mw.radius/MAXRANGE * width();
+				painter.drawLine(
+						center - w,
+						height()/2 - 10*mw_counter,
+						center + w,
+						height()/2 - 10*mw_counter
+						);
+				mw_counter++;
+			}
+		}
 	}
 };
-
-Particle rpg()
-{
-	static std::uniform_real_distribution<> dis(0.0, MAXRANGE);
-	Particle ret;
-	ret << dis(g_gen);
-	return ret;
-}
 
 int main(int argc, char* argv[])
 {
@@ -187,7 +234,6 @@ int main(int argc, char* argv[])
 	ob << 50.0;
 	pf.filter(m, ob, MM(), ObM());
 	pf.set_ejection(0.005, 0.99, &rpg);
-	MeanShift<Particle, ClimbFunctor2D<Particle, MeanShift::MeanWindow>> ms(3, &rpg, CompareParticle2D<Particle>(), 100.0);
 	SimWidget widget(pf);
 	widget.show();
 	return app.exec();
