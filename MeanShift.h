@@ -87,7 +87,7 @@ public:
 
 private:
 
-	MW climb(const MW& mw)
+	MW climb(MW& mw)
 	{
 		ClimbFunctor cf(*ps_);
 		bool changed;

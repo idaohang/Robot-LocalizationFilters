@@ -29,6 +29,7 @@ private:
 	Weight w_, accumw_;
 	double alpha_slow_, alpha_fast_;
 	double w_slow_ = 0.0, w_fast_ = 0.0;
+    double eject_ratio_ = 0.0;
 	bool enable_ejection_ = false;
 	RandomParticleGenerator rpg_ = nullptr;
 
@@ -50,6 +51,13 @@ public:
 		enable_ejection_ = true;
 		rpg_ = rpg;
 	}
+
+    void random_ejection(double eject_ratio, RandomParticleGenerator rpg) 
+    {
+        eject_ratio_ = eject_ratio;
+        enable_ejection_ = true;
+		rpg_ = rpg;
+    }
 
 	void disable_ejection()
 	{
@@ -134,21 +142,33 @@ private:
 		}
 
 		if (enable_ejection_) {
-			w_slow_ += alpha_slow_ * (w_ave - w_slow_);
+            w_slow_ += alpha_slow_ * (w_ave - w_slow_);
 			w_fast_ += alpha_fast_ * (w_ave - w_fast_);
-			double ejection_prob = std::max(0.0, 1.0 - w_fast_/w_slow_);
-			eject_random_particles(ejection_prob);
+			double ejection_prob = std::min(0.05, std::max(0.0, 1.0 - w_fast_/w_slow_));
+            // fprintf(stderr, "fast: %f\tslow: %f\tsumw: %f\taverage: %f\teject: %f\n", w_fast_, w_slow_, sumw, w_ave, ejection_prob);
+            eject_random_particles(ejection_prob);
 		}
 	}
 
 	void eject_random_particles(double ejection_prob)
 	{
-		printf("Ejection prob %f\n", ejection_prob);
+		// printf("Ejection prob %f\n", ejection_prob);
+#if 1
 		std::uniform_real_distribution<> dis(0.0, 1.0);
 		for(size_t i = 0; i < MParticle; i++) {
 			if (dis(gen_) < ejection_prob)
 				particles_[i] = (*rpg_)();
 		}
+#else
+        int num_ejects = int(eject_ratio_ * MParticle);
+        int eject_interval = int(MParticle / num_ejects);
+
+		std::uniform_int_distribution<> dis(0, eject_interval);
+        int offset = dis(gen_);
+		for(size_t i = 0; i < num_ejects; i++) {
+            particles_[i * eject_interval + offset] = (*rpg_)();
+		}
+#endif
 	}
 
 };
