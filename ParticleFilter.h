@@ -21,6 +21,7 @@ public:
 	typedef Eigen::Matrix<Element, 1, NMotion> Motion;
 	typedef std::vector<double> Weight;
 	typedef Particle (*RandomParticleGenerator)();
+
 private:
 	ParticleSet particles_, bar_particles_;
 	//std::random_device rd_;
@@ -73,8 +74,8 @@ public:
 	void feed_motion(const Motion& u, MotionModelFunctor mov)
 	{
 		for(size_t i = 0; i < MParticle; i++)
-            bar_particles_[i] = mov(u, particles_[i]);
-    }
+			bar_particles_[i] = mov(u, particles_[i]);
+	}
 
 	void feed_stall_motion()
 	{
@@ -151,6 +152,7 @@ private:
 
 	void eject_random_particles(double ejection_prob)
 	{
+		// printf("Ejection prob %f\n", ejection_prob);
 #if 1
 		std::uniform_real_distribution<> dis(0.0, 1.0);
 		for(size_t i = 0; i < MParticle; i++) {
