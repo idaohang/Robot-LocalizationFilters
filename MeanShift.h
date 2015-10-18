@@ -53,8 +53,12 @@ public:
 			for (int i = 0; i < nmeans_; i++)
 				mw_.emplace_back(MW({(*meanrpg_)(), 0, init_radius_}));
 		} else {
-			for (auto& mw : mw_)
+			//printf("====================\n");
+			for (auto& mw : mw_) {
+				//printf("this: %p, mw_: %p, mw item: %p\n", this, &mw_, &mw);
 				mw.radius = init_radius_;
+			}
+			//printf("====================\n");
 		}
 		std::sort(ps_->begin(), ps_->end(), pcmpf_);
 	}
@@ -63,8 +67,9 @@ public:
 	{
 		init_means(ps, reset);
 
-		for (auto& mw : mw_)
-			mw_.emplace_back(climb(mw));
+		for (auto& mw : mw_) {
+			climb(mw);
+		}
 	}
 
 	void meanshift_one()
