@@ -31,6 +31,7 @@ private:
 	double w_slow_ = 0.0, w_fast_ = 0.0;
     double eject_ratio_ = 0.0;
 	bool enable_ejection_ = false;
+	bool observed_;
 	RandomParticleGenerator rpg_ = nullptr;
 
 public:
@@ -67,6 +68,7 @@ public:
 	void begin_frame()
 	{
 		w_.assign(MParticle, 1.0); // Reset to unit probablistic
+		observed_ = false;
 	}
 
 	// Feed motion data
@@ -87,6 +89,7 @@ public:
 	template<typename ObservationModelFunctor>
 	void feed_sensor(const Ob& z, ObservationModelFunctor ob)
 	{
+		observed_ = true;
 		for(size_t i = 0; i < MParticle; i++) {
 			w_[i] *= ob(z, bar_particles_[i]);
 			//printf("OB: %f\n", w_[i]);
@@ -95,7 +98,8 @@ public:
 
 	void end_frame()
 	{
-		resample();
+		if (observed_)
+			resample();
 	}
 
 	template<typename MotionModelFunctor,
