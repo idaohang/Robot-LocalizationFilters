@@ -194,7 +194,7 @@ public:
 
         /* 6. compute new Gaussian distributions */
         MatrixNM K = Pxy * Pyy.inverse();
-        x = xk + K * (z- xm);
+        x = xk + K * (z - xm);
         P = Pk - K * Pyy * K.transpose();
     }
     /**

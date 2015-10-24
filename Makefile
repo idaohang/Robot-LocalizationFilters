@@ -8,5 +8,8 @@ else
 LIB=-lQt5Core -lQt5Gui -lQt5Widgets
 endif
 
+ukfapp: ukfapp.cc UnscentedKalmanFilter.h
+	g++ -g -std=c++11 ukfapp.cc -o ukfapp -lglut -lGL -lGLU -I/usr/include/eigen3
+
 pfapp: test_pf.cc ParticleFilter.h MeanWindow.h MeanShift.h PFHelper.h
 	g++ -g -std=c++11 -fPIC $(INCLUDE) -o pfapp test_pf.cc $(LIB)
