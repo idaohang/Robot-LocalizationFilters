@@ -26,7 +26,7 @@
 using namespace filter;
 
 std::random_device rng;
-std::normal_distribution<> distribution(0, 100);
+std::normal_distribution<> distribution(0, 50);
 
 bool showArrow = false;
 
@@ -93,14 +93,18 @@ void initUnscentedKalmanFilter() {
 
     FILTER::MatrixNN cov(FILTER::MatrixNN::Identity() * covFactor);
     cov << 
-        1000, 0, 0, 0,
-        0, 1000, 0, 0,
+        500, 0, 0, 0,
+        0, 500, 0, 0,
         0, 0, 5000, 0,
         0, 0, 0, 10
     ;
     ukf.SetStateCovariance(cov);
 
     FILTER::MatrixMM noise(FILTER::MatrixMM::Identity() * noiseFactor);
+    noise << 
+        20000, 0,
+        0, 2000
+    ;
     ukf.SetMeasureCovariance(noise);
 
     FILTER::MatrixNN pn = FILTER::MatrixNN::Identity() * pnFactor;
