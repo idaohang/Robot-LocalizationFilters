@@ -24,7 +24,7 @@ public:
 
 private:
 	ParticleSet particles_, bar_particles_;
-	//std::random_device rd_;
+	std::random_device rd_;
 	std::mt19937 gen_;
 	Weight w_, accumw_;
 	double alpha_slow_, alpha_fast_;
@@ -38,9 +38,9 @@ public:
 	ParticleFilter()
 		:particles_(MParticle),
 		bar_particles_(MParticle),
-		//rd_(),
-		//gen_(rd_()),
-		gen_(88),
+		rd_(),
+		gen_(rd_()),
+		//gen_(88),
 		w_(MParticle), accumw_(MParticle)
 	{
 	}
