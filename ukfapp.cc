@@ -103,7 +103,7 @@ void initUnscentedKalmanFilter() {
     FILTER::MatrixMM noise(FILTER::MatrixMM::Identity() * noiseFactor);
     noise << 
         20000, 0,
-        0, 2000
+        0, 1000
     ;
     ukf.SetMeasureCovariance(noise);
 
