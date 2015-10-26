@@ -54,6 +54,14 @@ public:
         this->Ftransp = mat.transpose();
     }
     /**
+     * Transition function noise form (N x N)
+     * add noise to covariance so that it does not become too small
+     * */
+    void SetProcessNoise(MatrixNN mat)
+    {
+        this->Q = mat;
+    }
+    /**
      * Covariance matrix of the state transition (N x N)
      * */
     void SetStateCovariance(MatrixNN mat)
@@ -84,7 +92,9 @@ public:
     void Predict()
     {
         x = F * x + u;
-        P = F * P * Ftransp;
+        P = F * P * Ftransp + Q;
+        // std::cout << P << std::endl;
+        // std::cout << "-------------------" << std::endl;
     }
     void Correct(const VectorM& z)
     {
@@ -101,8 +111,8 @@ public:
     void Update(const VectorM& z)
     {
         // update the current state by state transition matrix
-	Predict();
-	Correct(z);
+        Predict();
+        Correct(z);
     }
     /**
      * Get the current state variable
@@ -115,6 +125,7 @@ private:
 
     MatrixNN F, Ftransp;     // state transition function
     MatrixNN P;              // state uncertainty covariance
+    MatrixNN Q;              // state transition noise
     MatrixMN H;              // measurement extraction matrix
     MatrixNM Htransp;        //measurement extraction matrix transpose
     MatrixMM R;              // measurement noise

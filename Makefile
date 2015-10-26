@@ -8,6 +8,9 @@ else
 LIB=-lQt5Core -lQt5Gui -lQt5Widgets
 endif
 
+kfapp: kfapp.cc KalmanFilter.h
+	g++ -g -std=c++11 kfapp.cc -o kfapp -lglut -lGL -lGLU -I/usr/include/eigen3
+
 ukfapp: ukfapp.cc UnscentedKalmanFilter.h
 	g++ -g -std=c++11 ukfapp.cc -o ukfapp -lglut -lGL -lGLU -I/usr/include/eigen3
 
